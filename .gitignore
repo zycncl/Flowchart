@@ -1,0 +1,17 @@
+# Python önbellek dosyaları
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Sanal ortam klasörleri
+.env
+.venv
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
+
+# IDE ayarları
+.vscode/
+.idea/
