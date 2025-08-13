@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>İş Akışı Çizici</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css" />
+  <style>
+    html, body { height: 100%; margin: 0; font-family: sans-serif; }
+    #drawflow { height: calc(100vh - 50px); width: 100vw; background: #f5f5f5; }
+    #toolbar {
+      height: 50px; background: #333; color: white; display: flex; align-items: center; padding: 0 10px;
+    }
+    #toolbar button {
+      margin-right: 10px; padding: 5px 10px; border: none; background: #555; color: white; cursor: pointer;
+    }
+    #toolbar button:hover { background: #777; }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <button onclick="addNode()">+ Node Ekle</button>
+  <button onclick="saveFlowchart()">💾 Kaydet</button>
+  <button onclick="loadFlowchart()">📂 Yükle</button>
+</div>
+
+<div id="drawflow" class="drawflow"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/drawflow"></script>
+<script>
+  const editor = new Drawflow(document.getElementById('drawflow'));
+  editor.reroute = true;
+  editor.start();
+
+  function addNode() {
+    const id = Math.floor(Math.random() * 10000);
+    const html = `<div style="padding:10px;">Yeni Node ${id}</div>`;
+    editor.addNode(`node_${id}`, 1, 1, 200, 100, `node_${id}`, {}, html);
+  }
+
+  function saveFlowchart() {
+    const data = editor.export();
+    fetch('/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    }).then(res => res.json())
+      .then(res => alert(res.message));
+  }
+
+  function loadFlowchart() {
+    fetch('/load')
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          alert(data.error);
+        } else {
+          editor.import(data);
+        }
+      });
+  }
+
+  // Sayfa açıldığında otomatik yükleme
+  window.onload = loadFlowchart;
+</script>
+
+</body>
+</html>
