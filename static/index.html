@@ -2,76 +2,181 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8" />
-<title>İş Akışı Çizici</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>İş Akışı Çizici + RACI Matrisi</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css" />
 <style>
-  html, body { height: 100%; margin: 0; font-family: sans-serif; }
-  #toolbar {
-    height: 50px; background: #333; color: white;
-    display: flex; align-items: center; gap: 8px; padding: 0 10px;
-  }
-  #toolbar button {
-    background: #555; color: white; border: none; padding: 6px 12px; cursor: pointer;
-  }
-  #toolbar button:hover { background: #777; }
-  #drawflow { height: calc(100vh - 50px); background: #f5f5f5; }
-  .node-body {
-    padding: 10px; min-width: 120px; text-align: center;
-    background: white; border-radius: 8px; border: 1px solid #ccc;
-  }
+:root {
+  --bg: #f7f7fb;
+  --bar: #23272f;
+  --btn: #3a3f4b;
+  --btn-h: #4a5060;
+}
+html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; }
+body { background: var(--bg); display: flex; flex-direction: column; }
+
+/* Toolbar */
+#toolbar {
+  height: 56px;
+  background: var(--bar);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+#toolbar button {
+  height: 34px; padding: 0 12px; border: none;
+  border-radius: 6px; background: var(--btn); color: #fff; cursor: pointer;
+}
+#toolbar button:hover { background: var(--btn-h); }
+
+/* Ana alan: solda canvas, sağda RACI tablosu */
+#main {
+  flex: 1;
+  display: flex;
+}
+#canvas {
+  flex: 2;
+  background: #f0f2f6;
+}
+#raciPanel {
+  flex: 1;
+  background: #fff;
+  border-left: 1px solid #ddd;
+  padding: 10px;
+  overflow-y: auto;
+}
+#raciPanel table {
+  border-collapse: collapse;
+  width: 100%;
+}
+#raciPanel th, #raciPanel td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  text-align: left;
+}
+#raciPanel th {
+  background: #eee;
+}
+
+/* Node stilleri */
+.node-body {
+  padding: 8px 10px;
+  min-width: 100px;
+  text-align: center;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.node-start {
+  background: #4CAF50;
+  color: #fff;
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.node-end {
+  background: #E53935;
+  color: #fff;
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.node-task {
+  background: #2196F3;
+  color: #fff;
+  border-radius: 8px;
+}
+.node-decision {
+  background: #FFC107;
+  color: #000;
+  transform: rotate(45deg);
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.node-decision div {
+  transform: rotate(-45deg);
+}
 </style>
 </head>
 <body>
 
 <div id="toolbar">
-  <button onclick="addNode('Başlangıç')">● Başlangıç</button>
   <button onclick="addNode('Görev')">+ Görev</button>
   <button onclick="addNode('Karar')">◇ Karar</button>
+  <button onclick="addNode('Başlangıç')">● Başlangıç</button>
   <button onclick="addNode('Bitiş')">■ Bitiş</button>
-  <button onclick="generateRaciMatrix()">📊 RACI Matrisi</button>
 </div>
 
-<div id="drawflow" class="drawflow"></div>
+<div id="main">
+  <div id="canvas" class="drawflow"></div>
+  <div id="raciPanel">
+    <h3>RACI Matrisi</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tür</th>
+          <th>Açıklama</th>
+        </tr>
+      </thead>
+      <tbody id="raciTableBody">
+      </tbody>
+    </table>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
 <script>
-  const editor = new Drawflow(document.getElementById('drawflow'));
-  editor.reroute = true;
-  editor.start();
+const editor = new Drawflow(document.getElementById('canvas'));
+editor.reroute = true;
+editor.start();
 
-  function nodeTemplate(label) {
-    return `<div class="node-body" contenteditable="true">${label}</div>`;
+function nodeTemplate(label) {
+  if(label === 'Başlangıç') return `<div class="node-start">${label}</div>`;
+  if(label === 'Bitiş') return `<div class="node-end">${label}</div>`;
+  if(label === 'Görev') return `<div class="node-task">${label}</div>`;
+  if(label === 'Karar') return `<div class="node-decision"><div>${label}</div></div>`;
+  return `<div class="node-body">${label}</div>`;
+}
+
+function addNode(label) {
+  editor.addNode(label, 1, 1, 200, 200, label, {}, nodeTemplate(label));
+  updateRaciMatrix();
+}
+
+function updateRaciMatrix() {
+  const data = editor.export();
+  const raciData = data.drawflow.Home.data;
+  const tbody = document.getElementById('raciTableBody');
+  tbody.innerHTML = '';
+  for (let id in raciData) {
+    let node = raciData[id];
+    let row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${node.id}</td>
+      <td>${node.name}</td>
+      <td>${node.html.replace(/<[^>]*>?/gm, '')}</td>
+    `;
+    tbody.appendChild(row);
   }
+}
 
-  function addNode(label) {
-    const id = Math.floor(Math.random() * 10000);
-    const x = 200 + Math.random() * 200;
-    const y = 100 + Math.random() * 100;
-    editor.addNode(label, 1, 1, x, y, label, {}, nodeTemplate(label));
-  }
+/* Node ekleme, silme, bağlantı değiştirme gibi olaylarda RACI yenile */
+['nodeCreated', 'nodeRemoved', 'nodeMoved', 'connectionCreated', 'connectionRemoved'].forEach(evt => {
+  editor.on(evt, updateRaciMatrix);
+});
 
-  function generateRaciMatrix() {
-    const data = editor.export();
-    const raciData = data.drawflow.Home.data;
-    let matrix = [];
-
-    for (let id in raciData) {
-      const node = raciData[id];
-      const desc = node.html.replace(/<[^>]*>?/gm, '').trim();
-      matrix.push({
-        AdımID: node.id,
-        Tip: node.name,
-        Açıklama: desc,
-        Responsible: "",
-        Accountable: "",
-        Consulted: "",
-        Informed: ""
-      });
-    }
-
-    console.table(matrix);
-    alert("RACI matrisi konsola yazdırıldı!");
-  }
 </script>
 
 </body>
