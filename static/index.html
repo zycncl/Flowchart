@@ -11,8 +11,7 @@
   --bar: #2d2d2d;
   --btn: #4a4a4a;
   --btn-h: #666;
-  --node-default: #ffffff;
-  --node-selected: #cdeaff;
+  --node-selected: #d1ecff;
 }
 html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; background: var(--bg); }
 #toolbar {
@@ -33,15 +32,33 @@ html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; background
 .node-body {
   padding: 8px; min-width: 120px; text-align: center;
   border: 2px solid #999; border-radius: 6px;
-  background: var(--node-default);
+  background: white;
+  box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
 }
 .node-body.selected {
   background: var(--node-selected);
   border-color: #007acc;
 }
-.bpmn-start { border-radius: 50%; }
-.bpmn-end { border-radius: 50%; border-width: 3px; }
-.bpmn-decision { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+.bpmn-start {
+  border-radius: 50%;
+  background: #d4f8d4;
+  border-color: #4caf50;
+}
+.bpmn-end {
+  border-radius: 50%;
+  background: #ffd6d6;
+  border-color: #e53935;
+  border-width: 3px;
+}
+.bpmn-task {
+  background: #dceeff;
+  border-color: #2196f3;
+}
+.bpmn-decision {
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  background: #fff5d6;
+  border-color: #ff9800;
+}
 table { border-collapse: collapse; width: 100%; }
 th, td { border: 1px solid #ccc; padding: 4px; text-align: center; }
 th { background: #f0f0f0; }
@@ -53,7 +70,7 @@ td[contenteditable="true"] { background: #fff8dc; }
 <div id="toolbar">
   <button onclick="addNode('Başlangıç', 'bpmn-start')">● Başlangıç</button>
   <button onclick="addNode('Görev', 'bpmn-task')">▭ Görev</button>
-  <button onclick="addNode('Karar', 'bpmn-decision')">◇ Karar</button>
+  <button onclick="addDecisionNode()">◇ Karar</button>
   <button onclick="addNode('Bitiş', 'bpmn-end')">■ Bitiş</button>
   <button onclick="clearFlow()">Temizle</button>
 </div>
@@ -77,7 +94,6 @@ const editor = new Drawflow(document.getElementById('canvas'));
 editor.reroute = true;
 editor.start();
 
-// Node ekleme
 function addNode(label, cls) {
   const id = Math.floor(Math.random() * 100000);
   const html = `<div class="node-body ${cls}" contenteditable="true" onfocus="selectNode(this)">${label}</div>`;
@@ -85,13 +101,26 @@ function addNode(label, cls) {
   updateRaci();
 }
 
-// Node seçme görseli
+// Karar düğümü (2 çıkışlı: Evet ve Hayır)
+function addDecisionNode() {
+  const id = Math.floor(Math.random() * 100000);
+  const html = `<div class="node-body bpmn-decision" contenteditable="true" onfocus="selectNode(this)">Karar</div>`;
+  editor.addNode('Karar', 2, 1, 250, 200, 'Karar', {}, html);
+  
+  // Çıkış portlarına etiket ekleme
+  const nodeId = Object.keys(editor.drawflow.drawflow.Home.data).slice(-1)[0];
+  const node = editor.drawflow.drawflow.Home.data[nodeId];
+  node.outputs.output_1.label = "Evet";
+  node.outputs.output_2.label = "Hayır";
+
+  updateRaci();
+}
+
 function selectNode(el) {
   document.querySelectorAll('.node-body').forEach(n => n.classList.remove('selected'));
   el.classList.add('selected');
 }
 
-// RACI matrisi güncelleme
 function updateRaci() {
   const raciTable = document.querySelector('#raci-table tbody');
   raciTable.innerHTML = '';
@@ -112,7 +141,6 @@ function updateRaci() {
   }
 }
 
-// Bağlantı veya node değiştiğinde RACI güncelle
 editor.on('nodeCreated', updateRaci);
 editor.on('nodeRemoved', updateRaci);
 editor.on('connectionCreated', updateRaci);
