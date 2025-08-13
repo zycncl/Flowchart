@@ -1,193 +1,406 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>İş Akışı Çizici + RACI</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Akış Çizici + RACI (Yerel Kayıt)</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css">
 <style>
-:root {
-  --bg: #f7f7fb;
-  --ink: #111;
-  --bar: #23272f;
-  --btn: #3a3f4b;
-  --btn-h: #4a5060;
-}
-html, body {
-  height: 100%;
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-}
-body {
-  background: var(--bg);
-  color: var(--ink);
-  display: flex;
-  flex-direction: column;
-}
-#toolbar {
-  height: 56px;
-  background: var(--bar);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-}
-#toolbar button {
-  height: 34px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 10px;
-  background: var(--btn);
-  color: #fff;
-  cursor: pointer;
-}
-#toolbar button:hover { background: var(--btn-h); }
-#main {
-  flex: 1;
-  display: flex;
-}
-#canvas {
-  flex: 2;
-  height: calc(100vh - 56px);
-  background: #f0f2f6;
-}
-#raci-panel {
-  flex: 1;
-  background: #fff;
-  border-left: 1px solid #ccc;
-  padding: 10px;
-  overflow: auto;
-}
-.node-body {
-  padding: 8px 10px;
-  min-width: 140px;
-  text-align: center;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.06);
-}
-/* Karar düğümü (elmas) */
-.decision-node {
-  width: 100px;
-  height: 100px;
-  background: white;
-  border: 2px solid #333;
-  transform: rotate(45deg);
-  position: relative;
-  margin: auto;
-}
-.decision-node .node-label {
-  transform: rotate(-45deg);
-  text-align: center;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(-45deg);
-  font-weight: bold;
-}
-/* Portlar */
-.decision-node .output {
-  width: 12px;
-  height: 12px;
-  background: #333;
-  border-radius: 50%;
-  position: absolute;
-  transform: rotate(-45deg);
-}
-.decision-node .output_1 {
-  right: -10px;
-  bottom: -10px; /* Evet */
-}
-.decision-node .output_2 {
-  left: -10px;
-  bottom: -10px; /* Hayır */
-}
+  :root{
+    --bg:#f6f7fb; --ink:#0f172a; --bar:#111827; --muted:#e5e7eb;
+    --accent:#4a90e2; --accent-2:#7c3aed;
+    --pastel-green:#e6f6ea; --pastel-red:#fde8ea; --pastel-blue:#e9f2fe;
+    --pastel-amber:#fff3cd; --pastel-gray:#f8fafc;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
+  body{display:flex;flex-direction:column;background:var(--bg);color:var(--ink)}
+
+  /* TOPBAR */
+  #topbar{display:flex;gap:8px;align-items:center;padding:10px;border-bottom:1px solid var(--muted);background:#fff}
+  #topbar input, #topbar select{height:36px;padding:0 10px;border:1px solid #d1d5db;border-radius:8px}
+  #topbar button{height:36px;padding:0 12px;border:none;border-radius:10px;background:#111827;color:#fff;cursor:pointer}
+  #topbar button.secondary{background:#374151}
+  #topbar button:hover{filter:brightness(1.05)}
+  #spacer{flex:1}
+
+  /* LAYOUT */
+  #wrap{flex:1;display:grid;grid-template-columns:220px 1fr;grid-template-rows:1fr 280px;gap:0}
+  #palette{grid-column:1;grid-row:1/3;background:#fff;border-right:1px solid var(--muted);padding:10px;overflow:auto}
+  #canvas{grid-column:2;grid-row:1;background:#f1f5f9}
+  #raci{grid-column:1/3;grid-row:2;background:#fff;border-top:1px solid var(--muted);padding:10px;overflow:auto}
+
+  /* PALETTE */
+  .group-title{font-weight:700;margin:10px 6px 6px 6px;font-size:13px;color:#334155}
+  .shape{display:flex;align-items:center;gap:8px;width:100%;padding:8px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;margin:6px 0;cursor:grab}
+  .shape:hover{background:#f8fafc}
+  .badge{font-size:12px;color:#64748b;margin-left:auto}
+
+  /* NODE CONTENT (HTML içi) */
+  .node-box{
+    padding:8px 10px; min-width:140px; text-align:center; border-radius:10px;
+    border:2px solid transparent; box-shadow:0 2px 8px rgba(0,0,0,.06);
+    background:#fff; transition:all .2s ease-in-out; font-weight:600;
+  }
+  .node-box[contenteditable="true"]:focus{outline:none}
+  .is-selected .node-box{border-color:var(--accent); background:#eaf3fc}
+
+  /* Tip bazlı görseller (Visio/Celonis pastel) */
+  .style-start{background:var(--pastel-green);border-color:#22c55e}
+  .style-end{background:var(--pastel-red);border-color:#ef4444}
+  .style-task{background:var(--pastel-blue);border-color:var(--accent)}
+  .style-sub{background:#efe7fd;border-color:var(--accent-2)}
+  .style-data{background:var(--pastel-amber);border-color:#f59e0b}
+  .style-doc{background:#fff;border-color:#94a3b8}
+  .style-io{background:#f0fdfa;border-color:#14b8a6}
+  .style-note{background:var(--pastel-gray);border-color:#94a3b8}
+
+  /* DECISION (Diamond) görünür içerik */
+  .diamond-wrap{width:120px;height:120px;margin:auto;position:relative}
+  .diamond{position:absolute;inset:0;background:#fff;border:2px solid #57534e;transform:rotate(45deg);border-radius:6px}
+  .diamond-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                 transform:rotate(-45deg);font-weight:700}
+
+  /* Drawflow node kabı seçili durum */
+  .drawflow-node.is-selected{outline:3px solid rgba(74,144,226,.35);outline-offset:2px;border-radius:14px}
+
+  /* DECISION konektörlerini köşelere taşı (1 giriş, 2 çıkış) */
+  .drawflow-node.decision{width:140px !important; height:140px !important;}
+  .drawflow-node.decision .inputs, .drawflow-node.decision .outputs{position:absolute;inset:0}
+  /* input_1 = SOL KÖŞE */
+  .drawflow-node.decision .inputs .input_1{
+    position:absolute; left:-6px; top:50%; transform:translate(-50%,-50%);
+  }
+  /* output_1 = SAĞ KÖŞE  (EVET) */
+  .drawflow-node.decision .outputs .output_1{
+    position:absolute; left:calc(100% + 6px); top:50%; transform:translate(-50%,-50%);
+  }
+  /* output_2 = ALT KÖŞE  (HAYIR) */
+  .drawflow-node.decision .outputs .output_2{
+    position:absolute; left:50%; top:calc(100% + 6px); transform:translate(-50%,-50%);
+  }
+  /* Evet/Hayır etiketleri */
+  .drawflow-node.decision .evet-label,
+  .drawflow-node.decision .hayir-label{
+    position:absolute; font-size:11px; color:#111; background:#fff; padding:2px 4px; border:1px solid #e5e7eb; border-radius:6px;
+    pointer-events:none;
+  }
+  .drawflow-node.decision .evet-label{ right:-6px; top:50%; transform:translate(100%,-50%); }
+  .drawflow-node.decision .hayir-label{ left:50%; bottom:-6px; transform:translate(-50%,100%); }
+
+  /* RACI TABLOSU */
+  table{border-collapse:collapse;width:100%}
+  th,td{border:1px solid #e5e7eb;padding:6px;text-align:center}
+  thead th{background:#f8fafc}
+  td[contenteditable="true"]{background:#fff}
+  .small{font-size:12px;color:#6b7280}
 </style>
 </head>
 <body>
-<div id="toolbar">
-  <strong>İş Akışı</strong>
-  <button onclick="addNode('Başlangıç', 'green')">● Başlangıç</button>
-  <button onclick="addNode('Görev', 'lightblue')">▭ Görev</button>
-  <button onclick="addDecisionNode()">◇ Karar</button>
-  <button onclick="addNode('Bitiş', 'red')">■ Bitiş</button>
-  <button onclick="clearFlow()">Temizle</button>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <strong>Akış Çizici</strong>
+  <span class="small" style="margin-left:8px">• Drawflow</span>
+  <div id="spacer"></div>
+
+  <label class="small">Akış Adı:</label>
+  <input id="flowName" placeholder="örn. flow1" value="flow1" />
+  <button onclick="newFlow()" class="secondary">Yeni</button>
+  <button onclick="saveFlow()">Kaydet</button>
+  <select id="openSelect"></select>
+  <button onclick="openSelected()" class="secondary">Aç</button>
+  <button onclick="deleteSelected()" class="secondary">Sil</button>
+  <button onclick="exportJSON()" class="secondary">Dışa Aktar</button>
+  <label class="secondary" style="display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:10px;cursor:pointer">
+    İçe Aktar <input type="file" id="importFile" accept="application/json" style="display:none" />
+  </label>
 </div>
-<div id="main">
+
+<!-- ANA YERLEŞİM -->
+<div id="wrap">
+  <!-- PALETTE -->
+  <div id="palette">
+    <div class="group-title">Temel</div>
+    <div class="shape" data-type="Başlangıç" data-style="style-start">● Başlangıç <span class="badge">start</span></div>
+    <div class="shape" data-type="Görev" data-style="style-task">▭ Görev <span class="badge">task</span></div>
+    <div class="shape" data-type="Karar" data-style="">◇ Karar (E/H) <span class="badge">decision</span></div>
+    <div class="shape" data-type="Alt Süreç" data-style="style-sub">⧉ Alt Süreç <span class="badge">subprocess</span></div>
+    <div class="shape" data-type="Bitiş" data-style="style-end">○ Bitiş <span class="badge">end</span></div>
+
+    <div class="group-title">Veri & Belge</div>
+    <div class="shape" data-type="Veri" data-style="style-data">⬒ Veri <span class="badge">data</span></div>
+    <div class="shape" data-type="Belge" data-style="style-doc">📄 Belge <span class="badge">document</span></div>
+    <div class="shape" data-type="Girdi/Çıktı" data-style="style-io">⟂ Girdi/Çıktı <span class="badge">I/O</span></div>
+
+    <div class="group-title">Açıklama</div>
+    <div class="shape" data-type="Not" data-style="style-note">📝 Not <span class="badge">annotation</span></div>
+  </div>
+
+  <!-- CANVAS -->
   <div id="canvas" class="drawflow"></div>
-  <div id="raci-panel">
-    <h3>RACI Matrisi</h3>
-    <table id="raci-table" border="1" cellpadding="5" style="border-collapse: collapse; width:100%;">
+
+  <!-- RACI -->
+  <div id="raci">
+    <h3 style="margin:6px 0 10px 0">RACI Matrisi <span class="small">(akıştan otomatik)</span></h3>
+    <table>
       <thead>
-        <tr><th>ID</th><th>Tip</th><th>Açıklama</th><th>R</th><th>A</th><th>C</th><th>I</th></tr>
+        <tr>
+          <th>ID</th><th>Tür</th><th>İş Tanımı</th>
+          <th>Responsible (R)</th><th>Accountable (A)</th><th>Consulted (C)</th><th>Informed (I)</th>
+        </tr>
       </thead>
-      <tbody></tbody>
+      <tbody id="raciBody"></tbody>
     </table>
   </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
 <script>
-const el = document.getElementById('canvas');
-const editor = new Drawflow(el);
+/* -------------------- Editor -------------------- */
+const editor = new Drawflow(document.getElementById('canvas'));
 editor.reroute = true;
 editor.start();
 
-// Genel node ekleme
-function addNode(label, color) {
-  const html = `<div class="node-body" style="background:${color};">
-    <div contenteditable="true" spellcheck="false">${label}</div>
-  </div>`;
-  editor.addNode(label, 1, 1, 200, 200, label, {}, html);
-  updateRaciMatrix();
+/* Seçim vurgusu */
+editor.on('nodeSelected', id => {
+  document.querySelectorAll('.drawflow-node').forEach(n => n.classList.remove('is-selected'));
+  const el = document.getElementById('node-' + id);
+  if (el) el.classList.add('is-selected');
+});
+
+/* -------------------- Şekil Şablonları -------------------- */
+function htmlBox(label, extraClass=''){
+  return `<div class="node-box ${extraClass}" contenteditable="true" spellcheck="false">${label}</div>`;
+}
+function htmlDecision(){
+  return `
+    <div class="diamond-wrap">
+      <div class="diamond"></div>
+      <div class="diamond-label" contenteditable="true" spellcheck="false">Karar</div>
+      <div class="evet-label">Evet</div>
+      <div class="hayir-label">Hayır</div>
+    </div>`;
 }
 
-// Karar node ekleme
-function addDecisionNode() {
-  const html = `
-    <div class="decision-node">
-      <div class="node-label" contenteditable="true" spellcheck="false">Karar</div>
-    </div>
-  `;
-  editor.addNode('Karar', 2, 1, 300, 200, 'Karar', {}, html);
-  updateRaciMatrix();
-}
+/* -------------------- Node Ekleme -------------------- */
+function addNodeByType(type, x=220, y=140, styleClass=''){
+  let inputs = 1, outputs = 1, html = '', nodeClass = '';
 
-// Temizleme
-function clearFlow() {
-  if (confirm('Tüm düğümler silinsin mi?')) {
-    editor.clear();
-    updateRaciMatrix();
+  switch(type){
+    case 'Başlangıç':
+      html = htmlBox('Başlangıç', 'style-start'); outputs = 1; break;
+    case 'Bitiş':
+      html = htmlBox('Bitiş', 'style-end'); inputs = 1; outputs = 0; break;
+    case 'Görev':
+      html = htmlBox('Görev', 'style-task'); inputs = 1; outputs = 1; break;
+    case 'Alt Süreç':
+      html = htmlBox('Alt Süreç', 'style-sub'); inputs = 1; outputs = 1; break;
+    case 'Veri':
+      html = htmlBox('Veri', 'style-data'); inputs = 1; outputs = 1; break;
+    case 'Belge':
+      html = htmlBox('Belge', 'style-doc'); inputs = 1; outputs = 1; break;
+    case 'Girdi/Çıktı':
+      html = htmlBox('Girdi/Çıktı', 'style-io'); inputs = 1; outputs = 1; break;
+    case 'Not':
+      html = htmlBox('Not', 'style-note'); inputs = 0; outputs = 0; break;
+    case 'Karar':
+      html = htmlDecision(); inputs = 1; outputs = 2; nodeClass = 'decision'; break;
+    default:
+      html = htmlBox(type); break;
   }
+
+  const id = editor.addNode(type, inputs, outputs, x, y, nodeClass, {}, html);
+  updateRACI();
+  return id;
 }
 
-// RACI Matrisi güncelleme
-function updateRaciMatrix() {
-  const tbody = document.querySelector('#raci-table tbody');
+/* Palette: sürükle-bırak */
+document.querySelectorAll('#palette .shape').forEach(el=>{
+  el.setAttribute('draggable', 'true');
+  el.addEventListener('dragstart', e=>{
+    e.dataTransfer.setData('type', el.dataset.type);
+    e.dataTransfer.setData('style', el.dataset.style || '');
+  });
+});
+
+const canvasEl = document.getElementById('canvas');
+canvasEl.addEventListener('dragover', e=> e.preventDefault());
+canvasEl.addEventListener('drop', e=>{
+  e.preventDefault();
+  const type = e.dataTransfer.getData('type');
+  const style = e.dataTransfer.getData('style');
+  const pos = editor.getRelativeMousePoints(e);
+  addNodeByType(type, pos.x, pos.y, style);
+});
+
+/* -------------------- RACI Matrix (akıştan) -------------------- */
+const raciState = loadRaciState();  // flowName -> { nodeId: {desc,R,A,C,I} }
+
+function updateRACI(){
+  const tbody = document.getElementById('raciBody');
   tbody.innerHTML = '';
-  const data = editor.export();
-  let nodes = data.drawflow.Home.data;
-  for (let id in nodes) {
-    let node = nodes[id];
-    let desc = node.html.replace(/<[^>]*>?/gm, '').trim();
-    let row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${node.id}</td>
-      <td>${node.name}</td>
-      <td>${desc}</td>
-      <td contenteditable="true"></td>
-      <td contenteditable="true"></td>
-      <td contenteditable="true"></td>
-      <td contenteditable="true"></td>
+  const data = editor.export().drawflow.Home.data;
+  const fname = currentFlowName();
+
+  for(const id in data){
+    const n = data[id];
+    // Görünür açıklama (HTML'i sadeleştir)
+    const plain = (n.html || '').replace(/<[^>]+>/g,'').trim() || n.name;
+
+    // var olan RACI değerlerini getir
+    const saved = (raciState[fname] && raciState[fname][id]) ? raciState[fname][id] : {desc:plain,R:'',A:'',C:'',I:''};
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${id}</td>
+      <td>${n.name}</td>
+      <td contenteditable="true" data-k="desc">${saved.desc}</td>
+      <td contenteditable="true" data-k="R">${saved.R}</td>
+      <td contenteditable="true" data-k="A">${saved.A}</td>
+      <td contenteditable="true" data-k="C">${saved.C}</td>
+      <td contenteditable="true" data-k="I">${saved.I}</td>
     `;
-    tbody.appendChild(row);
+    // Hücre değişince state'e yaz
+    tr.querySelectorAll('[contenteditable]').forEach(cell=>{
+      cell.addEventListener('input', ()=>{
+        const k = cell.dataset.k;
+        raciState[fname] = raciState[fname] || {};
+        raciState[fname][id] = raciState[fname][id] || {desc:'',R:'',A:'',C:'',I:''};
+        raciState[fname][id][k] = cell.textContent.trim();
+        persistRaciState();
+      });
+    });
+
+    tbody.appendChild(tr);
   }
 }
 
-// Node değiştiğinde matrisi güncelle
-editor.on('nodeCreated', updateRaciMatrix);
-editor.on('nodeRemoved', updateRaciMatrix);
-editor.on('nodeDataChanged', updateRaciMatrix);
+/* RACI otomatik güncellemeleri */
+['nodeCreated','nodeRemoved','nodeMoved','nodeSelected','connectionCreated','connectionRemoved','moduleCreated','moduleChanged','nodeDataChanged']
+  .forEach(ev=> editor.on(ev, updateRACI));
+
+/* -------------------- Flow Kaydet / Aç / Sil / Dışa-İçe Aktar -------------------- */
+function currentFlowName(){ return (document.getElementById('flowName').value || 'flow1').trim(); }
+function flowsKey(){ return 'flows_v1'; }
+function raciKey(){ return 'raci_v1'; }
+
+function loadFlows(){
+  try{ return JSON.parse(localStorage.getItem(flowsKey())) || {}; }
+  catch{ return {}; }
+}
+function persistFlows(obj){ localStorage.setItem(flowsKey(), JSON.stringify(obj)); }
+function loadRaciState(){
+  try{ return JSON.parse(localStorage.getItem(raciKey())) || {}; }
+  catch{ return {}; }
+}
+function persistRaciState(){ localStorage.setItem(raciKey(), JSON.stringify(raciState)); }
+
+function refreshOpenSelect(){
+  const select = document.getElementById('openSelect');
+  const flows = loadFlows();
+  const names = Object.keys(flows).sort();
+  select.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('') || '<option value="">(Kayıt yok)</option>';
+}
+
+function newFlow(){
+  if(!confirm('Yeni boş akış başlatılsın mı? Kaydedilmemiş değişiklikler kaybolabilir.')) return;
+  editor.clear(); updateRACI();
+}
+
+function saveFlow(){
+  const name = currentFlowName();
+  if(!name){ alert('Lütfen akış adı girin.'); return; }
+  const flows = loadFlows();
+  flows[name] = editor.export();
+  persistFlows(flows);
+  // RACI state zaten anlık yazılıyor; sadece flow adı anahtarını garanti altına alalım
+  raciState[name] = raciState[name] || {};
+  persistRaciState();
+  refreshOpenSelect();
+  alert('Kaydedildi: ' + name);
+}
+
+function openSelected(){
+  const sel = document.getElementById('openSelect').value;
+  if(!sel){ alert('Açılacak kayıt yok.'); return; }
+  const flows = loadFlows();
+  const data = flows[sel];
+  if(!data){ alert('Kayıt bulunamadı.'); return; }
+  editor.clear();
+  editor.import(data);
+  document.getElementById('flowName').value = sel;
+  updateRACI();
+}
+
+function deleteSelected(){
+  const sel = document.getElementById('openSelect').value;
+  if(!sel) return;
+  if(!confirm(`"${sel}" kaydı silinsin mi?`)) return;
+  const flows = loadFlows();
+  delete flows[sel];
+  persistFlows(flows);
+  delete raciState[sel];
+  persistRaciState();
+  refreshOpenSelect();
+  alert('Silindi: ' + sel);
+}
+
+function exportJSON(){
+  const name = currentFlowName() || 'flow';
+  const payload = {
+    flow: editor.export(),
+    raci: raciState[name] || {}
+  };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${name}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* İÇE AKTAR */
+document.getElementById('importFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const obj = JSON.parse(reader.result);
+      if(obj.flow){
+        editor.clear();
+        editor.import(obj.flow);
+      }
+      const name = currentFlowName();
+      if(obj.raci){
+        raciState[name] = obj.raci;
+        persistRaciState();
+      }
+      updateRACI();
+      alert('İçe aktarıldı.');
+    }catch(err){
+      alert('Geçersiz JSON.');
+    }
+  };
+  reader.readAsText(file);
+});
+
+/* Sayfa yüklenince mevcut kayıtları listele */
+refreshOpenSelect();
+
+/* -------------------- Kısayollar -------------------- */
+window.addEventListener('keydown', e=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveFlow(); }
+});
+
+/* Demo: ilk kez gelen kullanıcıya birer örnek düğüm */
+if(Object.keys(loadFlows()).length===0){
+  addNodeByType('Başlangıç', 240,180);
+  addNodeByType('Görev', 460,180);
+  const dec = addNodeByType('Karar', 700,170);
+  addNodeByType('Bitiş', 900,260);
+}
 </script>
 </body>
 </html>
