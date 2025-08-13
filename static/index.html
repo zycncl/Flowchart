@@ -2,126 +2,77 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>İş Akışı Çizici</title>
-<!-- Drawflow CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/
-drawflow.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css">
 <style>
-:root {
---bg: #f7f7fb; --ink: #111; --bar: #23272f; --btn: #3a3f4b; --btn-h:
-#4a5060;
-}
-html, body { height: 100%; margin: 0; font-family: system-ui, -applesystem, Segoe UI, Roboto, Arial, sans-serif; }
-body { background: var(--bg); color: var(--ink); }
-#toolbar { height: 56px; background: var(--bar); color: #fff; display:
-flex; align-items: center; gap: 8px; padding: 0 12px; position: sticky; top:
-0; z-index: 10; }
-#toolbar input, #toolbar select { height: 34px; border-radius: 8px;
-border: none; padding: 0 10px; }
-2
-#toolbar button { height: 34px; padding: 0 12px; border: none; borderradius: 10px; background: var(--btn); color: #fff; cursor: pointer; }
-#toolbar button:hover { background: var(--btn-h); }
-#toolbar .spacer { flex: 1; }
-#canvas { height: calc(100vh - 56px); width: 100vw; background:
-#f0f2f6; }
-/* Node içerikleri */
-.node-body { padding: 8px 10px; min-width: 140px; text-align: center;
-background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.
-06); }
-.palette { position: absolute; left: 12px; top: 72px; display: grid;
-gap: 8px; }
-.palette button { background: #fff; color: #333; border: 1px solid
-#e5e7eb; }
+  html, body { height: 100%; margin: 0; font-family: sans-serif; }
+  #toolbar {
+    height: 50px; background: #333; color: white;
+    display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  }
+  #toolbar button {
+    background: #555; color: white; border: none; padding: 6px 12px; cursor: pointer;
+  }
+  #toolbar button:hover { background: #777; }
+  #drawflow { height: calc(100vh - 50px); background: #f5f5f5; }
+  .node-body {
+    padding: 10px; min-width: 120px; text-align: center;
+    background: white; border-radius: 8px; border: 1px solid #ccc;
+  }
 </style>
 </head>
 <body>
+
 <div id="toolbar">
-<strong>İş Akışı Çizici</strong>
-<div class="spacer"></div>
-<input id="flowId" placeholder="flow id" value="flow1" />
-<button onclick="addNode('Görev')">+ Görev</button>
-<button onclick="addNode('Karar')">◇ Karar</button>
-<button onclick="addNode('Başlangıç')">● Başlangıç</button>
-<button onclick="addNode('Bitiş')">■ Bitiş</button>
-<button onclick="saveFlow()"> Kaydet</button>
-<button onclick="loadFlow()"> Yükle</button>
-<button onclick="clearFlow()"> Temizle</button>
-<button onclick="downloadJSON()"> İndir</button>
+  <button onclick="addNode('Başlangıç')">● Başlangıç</button>
+  <button onclick="addNode('Görev')">+ Görev</button>
+  <button onclick="addNode('Karar')">◇ Karar</button>
+  <button onclick="addNode('Bitiş')">■ Bitiş</button>
+  <button onclick="generateRaciMatrix()">📊 RACI Matrisi</button>
 </div>
-<div id="canvas" class="drawflow"></div>
-<!-- Drawflow JS -->
-<script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></
-script>
+
+<div id="drawflow" class="drawflow"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
 <script>
-const el = document.getElementById('canvas');
-const editor = new Drawflow(el);
-editor.reroute = true; // Kablo yönlendirme
-editor.curvature = 0.5; // Kavis
-editor.zoom_min = 0.3;
-editor.zoom_max = 1.8;
-editor.zoom_value = 1;
-editor.start();
-// Basit node şablonu
-function nodeTemplate(label) {
-3
-return `<div class="node-body"><div contenteditable="true"
-spellcheck="false">${label}</div></div>`;
-}
-function addNode(label='Öğe') {
-const id = Math.floor(Math.random() * 100000);
-const x = 200 + Math.random()*200; const y = 120 + Math.random()*120;
-editor.addNode(label, 1, 1, x, y, label, {}, nodeTemplate(label));
-}
-// Silme: Del veya Backspace (inputların dışında)
-window.addEventListener('keydown', (e) => {
-if ((e.key === 'Delete' || e.key === 'Backspace') &&
-document.activeElement === document.body) {
-const module = editor.getModuleFromId ? editor.getModuleFromId() :
-'Home';
-const sel = editor.getSelectedNodes();
-sel.forEach(id => editor.removeNodeId(id));
-}
-// Hızlı kaydet Ctrl/Cmd+S
-if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-e.preventDefault(); saveFlow(); }
-});
-async function saveFlow() {
-const flowId = document.getElementById('flowId').value.trim() ||
-'flow1';
-const data = editor.export();
-const res = await fetch(`/save?id=${encodeURIComponent(flowId)}`, {
-method: 'POST', headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify(data)
-});
-const out = await res.json();
-alert(out.message + (out.id ? ` (${out.id})` : ''));
-}
-async function loadFlow() {
-const flowId = document.getElementById('flowId').value.trim() ||
-'flow1';
-const res = await fetch(`/load?id=${encodeURIComponent(flowId)}`);
-const data = await res.json();
-if (data.error) return alert(data.error);
-editor.clear();
-editor.import(data);
-}
-function clearFlow() {
-if (confirm('Tüm düğümler silinsin mi?')) editor.clear();
-}
-function downloadJSON() {
-4
-const data = editor.export();
-const blob = new Blob([JSON.stringify(data, null, 2)], { type:
-'application/json' });
-const url = URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url; a.download = (document.getElementById('flowId').value ||
-'flow1') + '.json';
-a.click(); URL.revokeObjectURL(url);
-}
-// İlk yüklemede otomatik dene
-window.addEventListener('load', loadFlow);
+  const editor = new Drawflow(document.getElementById('drawflow'));
+  editor.reroute = true;
+  editor.start();
+
+  function nodeTemplate(label) {
+    return `<div class="node-body" contenteditable="true">${label}</div>`;
+  }
+
+  function addNode(label) {
+    const id = Math.floor(Math.random() * 10000);
+    const x = 200 + Math.random() * 200;
+    const y = 100 + Math.random() * 100;
+    editor.addNode(label, 1, 1, x, y, label, {}, nodeTemplate(label));
+  }
+
+  function generateRaciMatrix() {
+    const data = editor.export();
+    const raciData = data.drawflow.Home.data;
+    let matrix = [];
+
+    for (let id in raciData) {
+      const node = raciData[id];
+      const desc = node.html.replace(/<[^>]*>?/gm, '').trim();
+      matrix.push({
+        AdımID: node.id,
+        Tip: node.name,
+        Açıklama: desc,
+        Responsible: "",
+        Accountable: "",
+        Consulted: "",
+        Informed: ""
+      });
+    }
+
+    console.table(matrix);
+    alert("RACI matrisi konsola yazdırıldı!");
+  }
 </script>
+
 </body>
 </html>
