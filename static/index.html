@@ -3,125 +3,127 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>BPMN İş Akışı + RACI Matrisi</title>
+<title>BPMN + RACI İş Akışı</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.css" />
 <style>
 :root {
-  --bg: #f7f7fb; --ink: #111; --bar: #23272f;
-  --btn: #3a3f4b; --btn-h: #4a5060;
+  --bg: #f5f5f5;
+  --bar: #2d2d2d;
+  --btn: #4a4a4a;
+  --btn-h: #666;
+  --node-default: #ffffff;
+  --node-selected: #cdeaff;
 }
-html, body { height: 100%; margin: 0; font-family: sans-serif; }
-body { display: flex; background: var(--bg); color: var(--ink); }
-#left-panel { flex: 3; display: flex; flex-direction: column; }
+html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; background: var(--bg); }
 #toolbar {
-  height: 56px; background: var(--bar); color: white;
+  height: 50px; background: var(--bar); color: white;
   display: flex; align-items: center; gap: 8px; padding: 0 12px;
 }
 #toolbar button {
-  height: 34px; padding: 0 12px; border: none; border-radius: 6px;
-  background: var(--btn); color: white; cursor: pointer;
+  background: var(--btn); color: white; border: none; padding: 6px 12px;
+  border-radius: 6px; cursor: pointer;
 }
 #toolbar button:hover { background: var(--btn-h); }
-#canvas { flex: 1; background: #f0f2f6; }
+#container { display: flex; height: calc(100vh - 50px); }
+#canvas { flex: 1; background: #eef1f5; }
 #raci-panel {
-  flex: 1; background: white; border-left: 1px solid #ddd; padding: 10px;
-  overflow-y: auto; min-width: 250px;
+  width: 350px; background: white; border-left: 1px solid #ccc;
+  padding: 10px; overflow: auto;
 }
 .node-body {
-  padding: 8px; display: flex; justify-content: center; align-items: center;
+  padding: 8px; min-width: 120px; text-align: center;
+  border: 2px solid #999; border-radius: 6px;
+  background: var(--node-default);
 }
-.bpmn-start {
-  width: 50px; height: 50px; border: 3px solid green; border-radius: 50%; background: white;
+.node-body.selected {
+  background: var(--node-selected);
+  border-color: #007acc;
 }
-.bpmn-end {
-  width: 50px; height: 50px; border: 5px solid red; border-radius: 50%; background: white;
-}
-.bpmn-task {
-  padding: 10px 20px; border: 2px solid #0066cc; border-radius: 8px; background: white;
-}
-.bpmn-gateway {
-  width: 60px; height: 60px; background: white;
-  transform: rotate(45deg);
-  border: 3px solid orange;
-}
-.bpmn-gateway div {
-  transform: rotate(-45deg); text-align: center; width: 100%; height: 100%;
-  display: flex; justify-content: center; align-items: center;
-}
-table {
-  border-collapse: collapse; width: 100%; margin-top: 10px;
-}
-th, td {
-  border: 1px solid #ccc; padding: 4px; text-align: center;
-}
-th { background: #f5f5f5; }
+.bpmn-start { border-radius: 50%; }
+.bpmn-end { border-radius: 50%; border-width: 3px; }
+.bpmn-decision { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #ccc; padding: 4px; text-align: center; }
+th { background: #f0f0f0; }
+td[contenteditable="true"] { background: #fff8dc; }
 </style>
 </head>
 <body>
-<div id="left-panel">
-  <div id="toolbar">
-    <button onclick="addNode('Başlangıç')">Başlangıç</button>
-    <button onclick="addNode('Bitiş')">Bitiş</button>
-    <button onclick="addNode('Görev')">Görev</button>
-    <button onclick="addNode('Karar')">Karar</button>
-    <button onclick="clearFlow()">Temizle</button>
-  </div>
-  <div id="canvas" class="drawflow"></div>
+
+<div id="toolbar">
+  <button onclick="addNode('Başlangıç', 'bpmn-start')">● Başlangıç</button>
+  <button onclick="addNode('Görev', 'bpmn-task')">▭ Görev</button>
+  <button onclick="addNode('Karar', 'bpmn-decision')">◇ Karar</button>
+  <button onclick="addNode('Bitiş', 'bpmn-end')">■ Bitiş</button>
+  <button onclick="clearFlow()">Temizle</button>
 </div>
-<div id="raci-panel">
-  <h3>RACI Matrisi</h3>
-  <table id="raci-table">
-    <thead>
-      <tr><th>Adım</th><th>R</th><th>A</th><th>C</th><th>I</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+
+<div id="container">
+  <div id="canvas" class="drawflow"></div>
+  <div id="raci-panel">
+    <h3>RACI Matrisi</h3>
+    <table id="raci-table">
+      <thead>
+        <tr><th>ID</th><th>Tip</th><th>Açıklama</th><th>R</th><th>A</th><th>C</th><th>I</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
 <script>
-const el = document.getElementById('canvas');
-const editor = new Drawflow(el);
+const editor = new Drawflow(document.getElementById('canvas'));
+editor.reroute = true;
 editor.start();
 
-function nodeTemplate(type) {
-  if (type === 'Başlangıç') return `<div class="node-body"><div class="bpmn-start"></div></div>`;
-  if (type === 'Bitiş') return `<div class="node-body"><div class="bpmn-end"></div></div>`;
-  if (type === 'Görev') return `<div class="node-body"><div class="bpmn-task">Görev</div></div>`;
-  if (type === 'Karar') return `<div class="node-body"><div class="bpmn-gateway"><div>?</div></div></div>`;
+// Node ekleme
+function addNode(label, cls) {
+  const id = Math.floor(Math.random() * 100000);
+  const html = `<div class="node-body ${cls}" contenteditable="true" onfocus="selectNode(this)">${label}</div>`;
+  editor.addNode(label, 1, 1, 200 + Math.random()*100, 150 + Math.random()*100, label, {}, html);
+  updateRaci();
 }
 
-function addNode(type) {
-  const id = Math.floor(Math.random() * 100000);
-  const x = 200 + Math.random() * 200;
-  const y = 100 + Math.random() * 200;
-  editor.addNode(type, 1, 1, x, y, type, {}, nodeTemplate(type));
-  updateRaciTable();
+// Node seçme görseli
+function selectNode(el) {
+  document.querySelectorAll('.node-body').forEach(n => n.classList.remove('selected'));
+  el.classList.add('selected');
 }
+
+// RACI matrisi güncelleme
+function updateRaci() {
+  const raciTable = document.querySelector('#raci-table tbody');
+  raciTable.innerHTML = '';
+  const data = editor.export().drawflow.Home.data;
+  for (let id in data) {
+    const node = data[id];
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${node.id}</td>
+      <td>${node.name}</td>
+      <td contenteditable="true">${node.html.replace(/<[^>]*>/g, '')}</td>
+      <td contenteditable="true"></td>
+      <td contenteditable="true"></td>
+      <td contenteditable="true"></td>
+      <td contenteditable="true"></td>
+    `;
+    raciTable.appendChild(row);
+  }
+}
+
+// Bağlantı veya node değiştiğinde RACI güncelle
+editor.on('nodeCreated', updateRaci);
+editor.on('nodeRemoved', updateRaci);
+editor.on('connectionCreated', updateRaci);
+editor.on('connectionRemoved', updateRaci);
 
 function clearFlow() {
-  if (confirm('Temizlensin mi?')) {
+  if (confirm('Tüm düğümler silinsin mi?')) {
     editor.clear();
-    updateRaciTable();
+    updateRaci();
   }
 }
-
-function updateRaciTable() {
-  const data = editor.export().drawflow.Home.data;
-  const tbody = document.querySelector('#raci-table tbody');
-  tbody.innerHTML = '';
-  let step = 1;
-  for (let id in data) {
-    let row = `<tr>
-      <td>${data[id].name} ${step++}</td>
-      <td>R</td><td>A</td><td>C</td><td>I</td>
-    </tr>`;
-    tbody.innerHTML += row;
-  }
-}
-
-editor.on('nodeCreated', updateRaciTable);
-editor.on('nodeRemoved', updateRaciTable);
 </script>
 </body>
 </html>
