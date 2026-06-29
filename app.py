@@ -2,8 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import json
 import os
 import traceback
-from google import genai
-from google.genai import types
+import requests
 
 app = Flask(__name__, static_folder="static")
 
