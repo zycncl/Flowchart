@@ -99,7 +99,7 @@ def ai_generate():
 
         # Gemini 1.5 Flash ile yanıt üretiyoruz ve JSON formatında dönmesini zorunlu kılıyoruz
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model=model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json"
