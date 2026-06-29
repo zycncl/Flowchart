@@ -30,20 +30,17 @@ def load():
     else:
         return jsonify({"error": "Dosya bulunamadı"}), 404
 
-# --- GEMINI API ENTEGRASYONU ---
-@app.route('/ai-generate', methods=['POST'])
-def ai_generate():
-    data = request.get_json()
-    user_text = data.get('text', '')
-    
-    if not user_text:
-        return jsonify({"error": "Metin boş olamaz"}), 400
-
-    # Render ortamından veya yerelden GEMINI_API_KEY'i alıyoruz
-    api_key = os.environ.get('GEMINI_API_KEY')
-    if not api_key:
-        return jsonify({"error": "GEMINI_API_KEY bulunamadı. Lütfen Render Environment ayarlarına ekleyin."}), 500
-
+response_text = response.text.strip()
+        
+        # --- EKSTRA GÜVENLİK KONTROLÜ ---
+        # Eğer Gemini inatla markdown ```json ... ``` blokları eklediyse temizle
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0].strip()
+        
+        flow_data = json.loads(response_text)
+        return jsonify(flow_data)
     try:
         # Yeni Google GenAI istemcisini başlatıyoruz
         client = genai.Client(api_key=api_key)
@@ -97,7 +94,7 @@ def ai_generate():
         }}
         """
 
-        # Gemini 1.5 Flash ile yanıt üretiyoruz ve JSON formatında dönmesini zorunlu kılıyoruz
+        # Gemini 2.5 Flash ile yanıt üretiyoruz ve JSON formatında dönmesini zorunlu kılıyoruz
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
