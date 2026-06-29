@@ -182,7 +182,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/drawflow/dist/drawflow.min.js"></script>
 <script>
-/* --------- GLOBAL TANIMLAR (Her Yerden Erişilebilir) --------- */
+/* --------- GLOBAL TANIMLAR --------- */
 let editor = null;
 let raciState = {};
 
@@ -304,4 +304,139 @@ function openSelected(){
   if(!data){ alert('Kayıt bulunamadı.'); return; }
   editor.clear();
   editor.import(data);
-  document.getElementById('flowName').value =
+  document.getElementById('flowName').value = sel;
+  updateRACI();
+}
+
+function deleteSelected(){
+  const sel = document.getElementById('openSelect').value;
+  if(!sel) return;
+  if(!confirm(`"${sel}" kaydı silinsin mi?`)) return;
+  const flows = loadFlows();
+  delete flows[sel];
+  persistFlows(flows);
+  delete raciState[sel];
+  persistRaciState();
+  refreshOpenSelect();
+  alert('Silindi: ' + sel);
+}
+
+function exportJSON(){
+  if(!editor) return;
+  const name = currentFlowName() || 'flow';
+  const payload = { flow: editor.export(), raci: raciState[name] || {} };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${name}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* --------- SAYFA YÜKLENDİĞİNDE BAŞLAYACAK ALAN --------- */
+window.onload = function() {
+  const canvasElement = document.getElementById('canvas');
+  if (canvasElement) {
+    editor = new Drawflow(canvasElement);
+    editor.reroute = true;
+    editor.start();
+
+    editor.on('nodeSelected', id => {
+      document.querySelectorAll('.drawflow-node').forEach(n => n.classList.remove('is-selected'));
+      const el = document.getElementById('node-' + id);
+      if (el) el.classList.add('is-selected');
+    });
+
+    ['nodeCreated','nodeRemoved','nodeMoved','nodeSelected','connectionCreated','connectionRemoved','nodeDataChanged']
+      .forEach(ev => editor.on(ev, updateRACI));
+  }
+
+  raciState = loadRaciState();
+  refreshOpenSelect();
+  updateRACI();
+
+  document.querySelectorAll('#palette .shape').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('type', el.dataset.type);
+    });
+  });
+
+  if (canvasElement) {
+    canvasElement.addEventListener('dragover', e => e.preventDefault());
+    canvasElement.addEventListener('drop', e => {
+      e.preventDefault();
+      const type = e.dataTransfer.getData('type');
+      const rect = editor.precanvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / editor.zoom;
+      const y = (e.clientY - rect.top) / editor.zoom;
+      addNodeByType(type, x, y);
+    });
+  }
+
+  document.getElementById('importFile')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const obj = JSON.parse(reader.result);
+        if(obj.flow && editor){ editor.clear(); editor.import(obj.flow); }
+        const name = currentFlowName();
+        if(obj.raci){ raciState[name] = obj.raci; persistRaciState(); }
+        updateRACI();
+        alert('İçe aktarıldı.');
+      } catch { alert('Geçersiz JSON.'); }
+    };
+    reader.readAsText(file);
+  });
+
+  window.addEventListener('keydown', e => {
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); saveFlow(); }
+  });
+};
+
+/* --------- YAPAY ZEKA ENTEGRASYON FONKSİYONU (GLOBAL) --------- */
+async function generateFlowWithAI() {
+  const inputEl = document.getElementById('aiInput');
+  const btnEl = document.getElementById('aiBtn');
+  const loadingEl = document.getElementById('aiLoading');
+  const text = inputEl?.value.trim();
+
+  if (!text) {
+    alert("Lütfen önce oluşturmak istediğiniz süreci açıklayan bir metin yazın.");
+    return;
+  }
+
+  if(btnEl) btnEl.disabled = true;
+  if(loadingEl) loadingEl.style.display = 'block';
+
+  try {
+    const response = await fetch('./ai-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text })
+    });
+
+    const result = await response.json();
+
+    if (response.ok && editor) {
+      let flowData = typeof result === 'string' ? JSON.parse(result) : result;
+      
+      editor.clear();
+      editor.import(flowData);
+      updateRACI();
+      if(inputEl) inputEl.value = "";
+      alert("Akış başarıyla oluşturuldu! Düğümleri dilediğiniz gibi sürükleyip düzenleyebilirsiniz.");
+    } else {
+      alert("Hata oluştu: " + (result.error || "Bilinmeyen bir hata."));
+    }
+  } catch (error) {
+    console.error("AI Hatası:", error);
+    alert("Yapay zeka akışı oluştururken bir hata oluştu fakat arayüzünüz korunuyor.");
+  } finally {
+    if(btnEl) btnEl.disabled = false;
+    if(loadingEl) loadingEl.style.display = 'none';
+  }
+}
+</script>
+</body>
+</html>
