@@ -85,4 +85,32 @@
   .style-data{background:var(--pastel-amber);border-color:#f59e0b}
   .style-doc{background:#fff;border-color:#94a3b8}
   .style-io{background:#f0fdfa;border-color:#14b8a6}
-  .style
+  .style-note{background:var(--pastel-gray);border-color:#94a3b8}
+
+  /* Decision (diamond) */
+  .diamond-wrap{width:120px;height:120px;margin:auto;position:relative}
+  .diamond{position:absolute;inset:0;background:#fff;border:2px solid #57534e;transform:rotate(45deg);border-radius:6px}
+  .diamond-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);font-weight:700}
+  .drawflow-node.decision{width:140px !important;height:140px !important;}
+  .drawflow-node.decision .inputs,.drawflow-node.decision .outputs{position:absolute;inset:0}
+
+  /* Port konumları */
+  .drawflow-node.decision .inputs .input_1{
+    position:absolute; left:-6px; top:50%; transform:translate(-50%,-50%);
+  }
+  .drawflow-node.decision .outputs .output_1{
+    position:absolute; left:calc(100% + 6px); top:50%; transform:translate(-50%,-50%);
+  }
+  .drawflow-node.decision .outputs .output_2{
+    position:absolute; left:50%; top:calc(100% + 6px); transform:translate(-50%,-50%);
+  }
+  .drawflow-node.decision .evet-label,
+  .drawflow-node.decision .hayir-label{
+    position:absolute; font-size:11px; color:#111; background:#fff; padding:2px 4px; border:1px solid #e5e7eb; border-radius:6px;
+    pointer-events:none;
+  }
+  .drawflow-node.decision .evet-label{ right:-6px; top:50%; transform:translate(100%,-50%); }
+  .drawflow-node.decision .hayir-label{ left:50%; bottom:-6px; transform:translate(-50%,100%); }
+
+  /* RACI */
+  h3{margin:6px 0 10px}
