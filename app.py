@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 import json
 import os
+import traceback
 from google import genai
 from google.genai import types
 
@@ -93,6 +94,9 @@ def ai_generate():
     if not api_key:
         return jsonify({"error": "Sunucuda GEMINI_API_KEY tanımlanmamış. Lütfen Render Environment ayarlarına ekleyin."}), 500
 
+    # API anahtarının başındaki ve sonundaki olası gizli boşlukları temizliyoruz
+    api_key = api_key.strip()
+
     try:
         # Yeni Google GenAI istemcisini API key ile başlatıyoruz
         client = genai.Client(api_key=api_key)
@@ -120,8 +124,17 @@ def ai_generate():
         return jsonify(flow_data)
         
     except Exception as e:
-        # Hatanın ne olduğunu tam görebilmek için hata detayını frontend'e döndürüyoruz
+        # Hatanın izini Render terminaline detaylıca yazdırıyoruz
+        traceback.print_exc()
         return jsonify({"error": f"Gemini API Hatası: {str(e)}"}), 500
+
+# --- KÜRESEL HATA YAKALAYICI ---
+# Flask üzerinde oluşabilecek her türlü unhandled (yakalanamayan) hatayı JSON formatına çevirir.
+# Bu sayede tarayıcı asla HTML hata sayfası almaz ve kilitlenmez.
+@app.errorhandler(Exception)
+def handle_exception(e):
+    traceback.print_exc()
+    return jsonify({"error": f"Sunucu Sistem Hatası: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=5000)
