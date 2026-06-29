@@ -390,6 +390,8 @@ window.addEventListener('keydown', e=>{
 </script>
 </body>
 </html>
+
+
 <script>
 /* --------- Yapay Zeka Entegrasyon Fonksiyonu --------- */
 async function generateFlowWithAI() {
@@ -403,9 +405,8 @@ async function generateFlowWithAI() {
     return;
   }
 
-  // Arayüz durumunu güncelle (Loading)
   btnEl.disabled = true;
-  loadingEl.style.display = 'block';
+  if(loadingEl) loadingEl.style.display = 'block';
 
   try {
     const response = await fetch('/ai-generate', {
@@ -417,16 +418,9 @@ async function generateFlowWithAI() {
     const result = await response.json();
 
     if (response.ok) {
-      // 1. Mevcut tuvali temizle
       editor.clear();
-      
-      // 2. AI'dan gelen Drawflow şemasını import et
       editor.import(result);
-      
-      // 3. Sağ taraftaki RACI matrisini tetikle ve güncelle
       updateRACI();
-      
-      // Girdi alanını temizle
       inputEl.value = "";
       alert("Akış başarıyla oluşturuldu! Düğümleri dilediğiniz gibi sürükleyip düzenleyebilirsiniz.");
     } else {
@@ -436,8 +430,11 @@ async function generateFlowWithAI() {
     console.error(error);
     alert("Sunucuya bağlanırken bir hata meydana geldi.");
   } finally {
-    // Arayüzü eski haline getir
     btnEl.disabled = false;
-    loadingEl.style.display = 'none';
+    if(loadingEl) loadingEl.style.display = 'none';
   }
 }
+</script>
+
+</body>
+</html>
