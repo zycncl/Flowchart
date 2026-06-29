@@ -10,6 +10,37 @@
     --bg:#f6f7fb; --ink:#0f172a; --muted:#e5e7eb; --panel:#ffffff;
     --accent:#4a90e2;
     --pastel-green:#e6f6ea; --pastel-red:#fde8ea; --pastel-blue:#e9f2fe; --pastel-amber:#fff3cd; --pastel-gray:#f8fafc;
+    /* AI Paneli Tasarımı */
+.ai-section {
+  background: #f0fdf4; /* Hafif yapay zeka yeşili tonu */
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+.ai-section textarea {
+  width: 100%;
+  height: 80px;
+  padding: 8px;
+  border: 1px solid #cde7d4;
+  border-radius: 8px;
+  resize: none;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.ai-section button {
+  width: 100%;
+  height: 32px;
+  background: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.ai-section button:hover { background: #15803d; }
+.loading-text { font-size: 11px; color: #16a34a; display: none; text-align: center; margin-top: 4px; }
   }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
@@ -110,6 +141,14 @@
 <div id="wrap">
   <!-- Palette -->
   <div id="palette">
+  <div class="ai-section">
+    <div class="group-title" style="margin:0; color: #14532d;">✨ AI Akış Sihirbazı</div>
+    <textarea id="aiInput" placeholder="Örn: Talep oluşturulur, müdür onaylarsa sipariş verilir, reddederse süreç biter."></textarea>
+    <button id="aiBtn" onclick="generateFlowWithAI()">Akışı Yapay Zekayla Çiz</button>
+    <div id="aiLoading" class="loading-text">⏳ Yapay zeka süreci analiz ediyor...</div>
+  </div>
+  
+  <div class="group-title">Temel</div>  
     <div class="group-title">Temel</div>
     <div class="shape" draggable="true" data-type="Başlangıç" data-style="style-start">● Başlangıç <span class="badge">start</span></div>
     <div class="shape" draggable="true" data-type="Görev" data-style="style-task">▭ Görev <span class="badge">task</span></div>
@@ -351,3 +390,54 @@ window.addEventListener('keydown', e=>{
 </script>
 </body>
 </html>
+
+/* --------- Yapay Zeka Entegrasyon Fonksiyonu --------- */
+async function generateFlowWithAI() {
+  const inputEl = document.getElementById('aiInput');
+  const btnEl = document.getElementById('aiBtn');
+  const loadingEl = document.getElementById('aiLoading');
+  const text = inputEl.value.trim();
+
+  if (!text) {
+    alert("Lütfen önce oluşturmak istediğiniz süreci açıklayan bir metin yazın.");
+    return;
+  }
+
+  // Arayüz durumunu güncelle (Loading)
+  btnEl.disabled = true;
+  loadingEl.style.display = 'block';
+
+  try {
+    const response = await fetch('/ai-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      // 1. Mevcut tuvali temizle
+      editor.clear();
+      
+      // 2. AI'dan gelen Drawflow şemasını import et
+      editor.import(result);
+      
+      // 3. Sağ taraftaki RACI matrisini tetikle ve güncelle
+      updateRACI();
+      
+      // Girdi alanını temizle
+      inputEl.value = "";
+      alert("Akış başarıyla oluşturuldu! Düğümleri dilediğiniz gibi sürükleyip düzenleyebilirsiniz.");
+    } else {
+      alert("Hata oluştu: " + (result.error || "Bilinmeyen bir hata."));
+    }
+  } catch (error) {
+    console.error(error);
+    alert("Sunucuya bağlanırken bir hata meydana geldi.");
+  } finally {
+    // Arayüzü eski haline getir
+    btnEl.disabled = false;
+    loadingEl.style.display = 'none';
+  }
+}
