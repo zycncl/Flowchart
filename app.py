@@ -91,12 +91,13 @@ def ai_generate():
 
     api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key:
-        return jsonify({"error": "GEMINI_API_KEY bulunamadı. Lütfen Render Environment ayarlarına ekleyin."}), 500
+        return jsonify({"error": "Sunucuda GEMINI_API_KEY tanımlanmamış. Lütfen Render Environment ayarlarına ekleyin."}), 500
 
     try:
+        # Yeni Google GenAI istemcisini API key ile başlatıyoruz
         client = genai.Client(api_key=api_key)
         
-        # Metni şablona güvenli bir şekilde yerleştiriyoruz
+        # Metni şablona yerleştiriyoruz
         prompt = PROMPT_TEMPLATE.replace("{user_text}", user_text)
 
         response = client.models.generate_content(
@@ -109,6 +110,7 @@ def ai_generate():
         
         response_text = response.text.strip()
         
+        # Olası Markdown sarmalayıcılarını temizliyoruz
         if "```json" in response_text:
             response_text = response_text.split("```json")[1].split("```")[0].strip()
         elif "```" in response_text:
@@ -118,7 +120,8 @@ def ai_generate():
         return jsonify(flow_data)
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # Hatanın ne olduğunu tam görebilmek için hata detayını frontend'e döndürüyoruz
+        return jsonify({"error": f"Gemini API Hatası: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=5000)
