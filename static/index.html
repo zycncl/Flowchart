@@ -409,7 +409,7 @@ async function generateFlowWithAI() {
   if(loadingEl) loadingEl.style.display = 'block';
 
   try {
-    const response = await fetch('/ai-generate', {
+    const response = await fetch('./ai-generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text })
